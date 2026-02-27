@@ -1,16 +1,56 @@
-# React + Vite
+# jlabs-assessment-web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend for the jlabs assessment project, built with React, Vite, and TailwindCSS.
 
-Currently, two official plugins are available:
+## Prerequisites
+- Node.js (v18 or higher recommended)
+- npm (comes with Node.js)
+- Backend API running (see ../jlabs-assessment-api)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Setup Instructions
 
-## React Compiler
+### 1. Clone the repository
+```
+git clone <repo-url>
+cd jlabs-assessment-web
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. Install dependencies
+```
+npm install
+```
 
-## Expanding the ESLint configuration
+### 3. Environment variables
+- Copy `.env.example` to `.env` and update values as needed.
+- Example:
+  ```
+  VITE_API_URL=http://localhost:8000
+  ```
+- Make sure this matches your backend API URL.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 4. Start the development server
+```
+npm run dev
+```
+- The app will be available at `http://localhost:5173` by default.
+
+## Project Structure
+- `src/pages/` — Main pages (LoginPage.jsx, HomePage.jsx)
+- `src/components/` — Reusable components (ProtectedRoute.jsx, etc.)
+- `src/context/` — Context providers and hooks (AuthContext.jsx, ThemeContext.jsx, etc.)
+
+## Features
+- Login with backend API
+- Protected routes (Home page only accessible after login)
+- Geolocation and IP info display
+- TailwindCSS for styling (via CDN in index.html)
+
+## Troubleshooting
+- Ensure the backend API is running and accessible.
+- Check `.env` for correct API URL.
+- If you change dependencies, re-run `npm install`.
+- For any issues, check the browser console and terminal output for errors.
+
+---
+
+For Docker or production setup, see instructions in this README once available.
