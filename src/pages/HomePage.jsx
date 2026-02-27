@@ -29,25 +29,49 @@ const GEO_FIELDS = [
   { key: 'postal',   label: 'postal',      icon: '◈' },
 ]
 
+// ── Tile layers ───────────────────────────────────────────────────────────────
+const TILE_LAYERS = {
+  dark:      { label: 'Dark',      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',   maxZoom: 19 },
+  light:     { label: 'Light',     url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',  maxZoom: 19 },
+  satellite: { label: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 18 },
+  terrain:   { label: 'Terrain',   url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                maxZoom: 17 },
+}
+
 // ── Leaflet Map ───────────────────────────────────────────────────────────────
 function MapView({ loc, theme }) {
-  const mapRef      = useRef(null)
-  const instanceRef = useRef(null)
-  const markerRef   = useRef(null)
-  const tileRef     = useRef(null)
+  const mapRef       = useRef(null)
+  const instanceRef  = useRef(null)
+  const markerRef    = useRef(null)
+  const tileRef      = useRef(null)
+  const userPickedRef = useRef(false)
 
-  const darkTile  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-  const lightTile = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  const [viewMode, setViewMode]     = useState(() => theme === 'dark' ? 'dark' : 'light')
+  const [dropdownOpen, setDropdown] = useState(false)
 
+  // Sync default view with theme, unless user has manually picked a layer
+  useEffect(() => {
+    if (!userPickedRef.current) {
+      setViewMode(theme === 'dark' ? 'dark' : 'light')
+    }
+  }, [theme])
+
+  // Init map + marker when loc changes
   useEffect(() => {
     if (!loc || !window.L) return
     const [lat, lng] = loc.split(',').map(Number)
     if (isNaN(lat) || isNaN(lng)) return
 
     if (!instanceRef.current) {
-      instanceRef.current = window.L.map(mapRef.current, { zoomControl: true, attributionControl: false })
-        .setView([lat, lng], 11)
-      tileRef.current = window.L.tileLayer(theme === 'dark' ? darkTile : lightTile, { maxZoom: 19 })
+      instanceRef.current = window.L.map(mapRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+      }).setView([lat, lng], 11)
+
+      // Zoom control — top right
+      window.L.control.zoom({ position: 'topright' }).addTo(instanceRef.current)
+
+      const layer = TILE_LAYERS[viewMode]
+      tileRef.current = window.L.tileLayer(layer.url, { maxZoom: layer.maxZoom })
         .addTo(instanceRef.current)
     } else {
       instanceRef.current.setView([lat, lng], 11)
@@ -57,28 +81,61 @@ function MapView({ loc, theme }) {
     const accentColor = theme === 'dark' ? '#c8ff00' : '#2d6a4f'
     const icon = window.L.divIcon({
       className: '',
-      html: `<div style="width:14px;height:14px;border-radius:50%;background:${accentColor};border:2px solid var(--bg);box-shadow:0 0 0 5px ${accentColor}33,0 2px 8px rgba(0,0,0,0.4);"></div>`,
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${accentColor};border:2px solid #fff;box-shadow:0 0 0 5px ${accentColor}33,0 2px 8px rgba(0,0,0,0.5);"></div>`,
       iconSize: [14, 14],
       iconAnchor: [7, 7],
     })
     markerRef.current = window.L.marker([lat, lng], { icon }).addTo(instanceRef.current)
-  }, [loc, theme])
+  }, [loc])
 
-  // Swap tile layer on theme change
+  // Swap tile layer when viewMode changes
   useEffect(() => {
     if (!instanceRef.current || !window.L) return
     if (tileRef.current) tileRef.current.remove()
-    tileRef.current = window.L.tileLayer(theme === 'dark' ? darkTile : lightTile, { maxZoom: 19 })
+    const layer = TILE_LAYERS[viewMode]
+    tileRef.current = window.L.tileLayer(layer.url, { maxZoom: layer.maxZoom })
       .addTo(instanceRef.current)
-  }, [theme])
+  }, [viewMode])
 
   useEffect(() => () => { instanceRef.current?.remove(); instanceRef.current = null }, [])
 
+  const handleViewChange = (key) => {
+    userPickedRef.current = true
+    setViewMode(key)
+    setDropdown(false)
+  }
+
   return (
     <div style={css.mapWrap}>
-      <div style={css.mapLabel}>
-        <span style={css.mapLabelText}>▸ map_view</span>
+      {/* View mode dropdown — top left */}
+      <div style={css.mapControls}>
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setDropdown(o => !o)} style={css.mapDropdownBtn}>
+            <span style={css.mapDropdownIcon}>▸</span>
+            {TILE_LAYERS[viewMode].label}
+            <span style={{ fontSize: '9px', opacity: 0.5, marginLeft: '2px' }}>{dropdownOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {dropdownOpen && (
+            <div style={css.mapDropdown}>
+              {Object.entries(TILE_LAYERS).map(([key, layer]) => (
+                <button
+                  key={key}
+                  onClick={() => handleViewChange(key)}
+                  style={{
+                    ...css.mapDropdownItem,
+                    background: viewMode === key ? 'var(--accent-dim)' : 'transparent',
+                    color: viewMode === key ? 'var(--accent)' : 'var(--text-dim)',
+                  }}
+                >
+                  {viewMode === key ? '✓ ' : '  '}{layer.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
       <div ref={mapRef} style={css.map} />
     </div>
   )
@@ -360,7 +417,7 @@ export default function HomePage() {
               </div>
               {selected.size > 0 && (
                 <button onClick={deleteSelected} style={css.deleteBtn}>
-                  delete {selected.size} selected
+                  rm {selected.size} selected
                 </button>
               )}
             </div>
@@ -643,22 +700,51 @@ const css = {
     borderTop: '1px solid var(--border-subtle)',
     position: 'relative',
   },
-  mapLabel: {
+  mapControls: {
     position: 'absolute',
     top: '10px',
     left: '10px',
     zIndex: 999,
+  },
+  mapDropdownBtn: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '11px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
     background: 'var(--surface)',
     border: '1px solid var(--border)',
     borderRadius: '6px',
-    padding: '3px 9px',
-    boxShadow: 'var(--shadow-sm)',
-  },
-  mapLabelText: {
-    fontFamily: "'JetBrains Mono', monospace",
-    fontSize: '10px',
+    padding: '5px 10px',
     color: 'var(--text-muted)',
-    letterSpacing: '0.04em',
+    cursor: 'pointer',
+    boxShadow: 'var(--shadow-sm)',
+    whiteSpace: 'nowrap',
+  },
+  mapDropdownIcon: { color: 'var(--accent)', fontSize: '10px' },
+  mapDropdown: {
+    position: 'absolute',
+    top: 'calc(100% + 5px)',
+    left: 0,
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    boxShadow: 'var(--shadow-md)',
+    minWidth: '120px',
+    zIndex: 1000,
+  },
+  mapDropdownItem: {
+    fontFamily: "'JetBrains Mono', monospace",
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: '8px 12px',
+    fontSize: '12px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background 0.1s',
+    borderBottom: '1px solid var(--border-subtle)',
   },
   map: { width: '100%', height: '260px' },
 
